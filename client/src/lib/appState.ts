@@ -12,8 +12,23 @@ export class AppState {
     makeAutoObservable(this);
   }
 
-  insertNewItem(previous: Item | null, next: Item | null): Item {
-    const newItem = createItem({ parent: null }, previous, next);
+  setParent(item: Item, parent: Item | null) {
+    if (!parent?.id) return;
+    item.parent = parent.id;
+  }
+
+  insertNewItem(
+    previous: Item | null,
+    next: Item | null,
+    insertAfterCurrent: boolean
+  ): Item {
+    // If the user hits 'enter' on the root of a new indentation level we want
+    // to add the new item to the top of the indented set, like Workflowy does.
+    const parent =
+      insertAfterCurrent && next?.parent !== previous?.parent && next !== null
+        ? previous?.id ?? null
+        : previous?.parent ?? null;
+    const newItem = createItem({ parent }, previous, next);
     this.items.push(newItem);
     this.items.sort((a, b) => (a.sortOrder < b.sortOrder ? -1 : 1));
     return newItem;

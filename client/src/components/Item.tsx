@@ -17,7 +17,7 @@ function ItemComponent({ item }: { item: Item }) {
         <button
           onClick={(e) => {
             e.preventDefault();
-            appState.insertNewItem(previous, item);
+            appState.insertNewItem(previous, item, false);
           }}
         >
           Insert before
@@ -36,10 +36,19 @@ function ItemComponent({ item }: { item: Item }) {
         <button
           onClick={(e) => {
             e.preventDefault();
-            appState.insertNewItem(item, next);
+            appState.insertNewItem(item, next, true);
           }}
         >
           Insert after
+        </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            console.log("indenting", item.id, previous?.id);
+            appState.setParent(item, previous);
+          }}
+        >
+          Indent
         </button>
       </article>
     </li>
