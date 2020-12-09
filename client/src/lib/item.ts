@@ -30,6 +30,10 @@ export function create(
   previous: Item | null,
   next: Item | null
 ): Item {
+  console.log(
+    "setting sort order",
+    mudder(previous?.sortOrder ?? "", next?.sortOrder ?? "")[0]
+  );
   return {
     ...seed,
     id: generateId(),

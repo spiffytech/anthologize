@@ -4,11 +4,9 @@ import { observer } from "mobx-react-lite";
 
 import "./Item.css";
 import appState from "../lib/appState";
-import type { Item } from "../lib/item";
+import type { ItemTree } from "../lib/appState";
 
-function ItemComponent({ item }: { item: Item }) {
-  const [previous, next] = appState.siblings.get(item)!;
-
+function ItemComponent({ item }: { item: ItemTree }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -17,26 +15,29 @@ function ItemComponent({ item }: { item: Item }) {
         <button
           onClick={(e) => {
             e.preventDefault();
-            appState.insertNewItem(previous, item, false);
+            appState.insertNewItem(item, false);
           }}
         >
           Insert before
         </button>
 
         <input
-          value={item.text}
-          onChange={(e) => (item.text = e.target.value)}
+          value={item.value.text}
+          onChange={(e) => appState.setItemText(item.value, e.target.value)}
           placeholder="Empty item..."
           tw="absolute -top-full focus:(static bg-red-200) w-64 h-16 block"
           ref={inputRef}
         />
+        <p>
+          Sort Order: {item.value.sortOrder} / {JSON.stringify(item.value)}
+        </p>
         <p tw="bg-gray-200 w-64 h-16" onClick={() => inputRef.current!.focus()}>
-          {item.text}
+          {item.value.text}
         </p>
         <button
           onClick={(e) => {
             e.preventDefault();
-            appState.insertNewItem(item, next, true);
+            appState.insertNewItem(item, true);
           }}
         >
           Insert after
@@ -44,8 +45,7 @@ function ItemComponent({ item }: { item: Item }) {
         <button
           onClick={(e) => {
             e.preventDefault();
-            console.log("indenting", item.id, previous?.id);
-            appState.setParent(item, previous);
+            appState.indent(item);
           }}
         >
           Indent

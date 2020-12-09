@@ -3,32 +3,34 @@ import { observer } from "mobx-react-lite";
 
 import ItemComponent from "./Item";
 import appState from "../lib/appState";
-import type { Item } from "../lib/item";
+import type { ItemTree } from "../lib/appState";
+//import type { Item } from '../lib/item';
 
 function ItemList({
   items,
-  parentId,
+  parent,
 }: {
-  items: Item[];
-  parentId: string | null;
+  items: ItemTree[];
+  parent: ItemTree | null;
 }) {
   return (
     <ul tw="ml-8">
-      {items.map((item) =>
-        item.parent !== parentId ? (
-          <ItemList
-            items={items.filter((i) => i.parent === item.parent)}
-            parentId={item.parent}
-            key={item.id}
-          />
-        ) : (
-          <ItemComponent item={item} key={item.id} />
-        )
-      )}
+      {items.map((item) => (
+        <>
+          <ItemComponent item={item} key={item.value.id + "-item"} />
+          {item.children.length > 0 && (
+            <ItemList
+              items={item.children}
+              parent={item}
+              key={item.value.id + "-children"}
+            />
+          )}
+        </>
+      ))}
       <button
         onClick={(e) => {
           e.preventDefault();
-          appState.insertNewItem(items[items.length - 1], null, true);
+          appState.insertNewItem(items[items.length - 1] ?? null, true);
         }}
       >
         Add to end of list
