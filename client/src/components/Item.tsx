@@ -22,17 +22,17 @@ function ItemComponent({ item }: { item: ItemTree }) {
         </button>
 
         <input
-          value={item.value.text}
-          onChange={(e) => appState.setItemText(item.value, e.target.value)}
+          value={item.text}
+          onChange={(e) => appState.setItemText(item, e.target.value)}
           placeholder="Empty item..."
           tw="absolute -top-full focus:(static bg-red-200) w-64 h-16 block"
           ref={inputRef}
         />
         <p tw="bg-gray-200 w-64 h-16" onClick={() => inputRef.current!.focus()}>
-          {item.value.text}
+          {item.text}
         </p>
         <p>
-          Sort Order: {item.value.sortOrder} / {JSON.stringify(item.value)}
+          Sort Order: {item.sortOrder} / {item.id}
         </p>
         <button
           onClick={(e) => {

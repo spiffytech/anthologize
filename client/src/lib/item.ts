@@ -10,7 +10,7 @@ const nanoid = customAlphabet("245689bcdfghjkmnpqrstvwxyza", 16);
 
 export interface Item {
   id: string;
-  parent: string | null;
+  parentId: string | null;
   sortOrder: string;
   text: string;
 }

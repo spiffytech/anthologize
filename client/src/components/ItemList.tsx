@@ -21,13 +21,13 @@ function ItemList({
   return (
     <ul tw="ml-8">
       {items.map((item) => (
-        <React.Fragment key={item.value.id}>
-          <ItemComponent item={item} key={item.value.id + "-item"} />
+        <React.Fragment key={item.id}>
+          <ItemComponent item={item} key={item.id + "-item"} />
           {item.children.length > 0 ? (
             <ItemList
               items={item.children}
               parent={item}
-              key={item.value.id + "-children"}
+              key={item.id + "-children"}
             />
           ) : null}
         </React.Fragment>

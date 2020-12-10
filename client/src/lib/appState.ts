@@ -2,16 +2,13 @@ import { makeAutoObservable, toJS } from "mobx";
 
 import { Item, create as createItem, getSortOrder } from "./item";
 
-interface Tree<T> {
-  value: T;
-  parent: Tree<T> | null;
-  children: Tree<T>[];
+export interface ItemTree extends Item {
+  parent: ItemTree | null;
+  children: ItemTree[];
 }
 
-export type ItemTree = Tree<Item>;
-
 function itemTreeComparator(a: ItemTree, b: ItemTree): -1 | 0 | 1 {
-  return a.value.sortOrder < b.value.sortOrder ? -1 : 1;
+  return a.sortOrder < b.sortOrder ? -1 : 1;
 }
 
 export class AppState {
@@ -70,9 +67,9 @@ export class AppState {
     const newSiblings = newParent.children;
     const toInsertAfter =
       newSiblings.length > 0 ? newSiblings[newSiblings.length - 1]! : null;
-    item.value.parent = newParent.value.id;
+    item.parentId = newParent.id;
     item.parent = newParent;
-    item.value.sortOrder = getSortOrder(toInsertAfter?.value ?? null, null);
+    item.sortOrder = getSortOrder(toInsertAfter ?? null, null);
     item.parent.children.push(item);
     item.parent.children.sort(itemTreeComparator);
   }
@@ -80,9 +77,9 @@ export class AppState {
   insertNewItem(currentItem: ItemTree | null, insertAfterItem: boolean): Item {
     // Handles the first item in the tree
     if (!currentItem) {
-      const newItem = createItem({ parent: null }, null, null);
+      const newItem = createItem({ parentId: null }, null, null);
       const newItemTree: ItemTree = {
-        value: newItem,
+        ...newItem,
         children: [],
         parent: null,
       };
@@ -97,13 +94,13 @@ export class AppState {
     console.log("new neighbors", toJS(previous), toJS(next));
 
     const newItem = createItem(
-      { parent: currentItem.parent?.value.id ?? null },
-      previous?.value ?? null,
-      next?.value ?? null
+      { parentId: currentItem.parent?.id ?? null },
+      previous,
+      next
     );
     console.log("new item", toJS(newItem));
     const newItemTree: ItemTree = {
-      value: newItem,
+      ...newItem,
       children: [],
       parent: currentItem.parent,
     };
