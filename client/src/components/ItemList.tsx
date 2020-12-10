@@ -1,3 +1,4 @@
+import React from "react";
 import "twin.macro";
 import { observer } from "mobx-react-lite";
 
@@ -13,19 +14,23 @@ function ItemList({
   items: ItemTree[];
   parent: ItemTree | null;
 }) {
+  console.log(
+    "children",
+    items.map((item) => item.children)
+  );
   return (
     <ul tw="ml-8">
       {items.map((item) => (
-        <>
+        <React.Fragment key={item.value.id}>
           <ItemComponent item={item} key={item.value.id + "-item"} />
-          {item.children.length > 0 && (
+          {item.children.length > 0 ? (
             <ItemList
               items={item.children}
               parent={item}
               key={item.value.id + "-children"}
             />
-          )}
-        </>
+          ) : null}
+        </React.Fragment>
       ))}
       <button
         onClick={(e) => {

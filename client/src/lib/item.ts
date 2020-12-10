@@ -25,6 +25,10 @@ function generateId(): string {
   return nano.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1-$2-$3-$4");
 }
 
+export function getSortOrder(previous: Item | null, next: Item | null) {
+  return mudder(previous?.sortOrder ?? "", next?.sortOrder ?? "")[0];
+}
+
 export function create(
   seed: NewItem,
   previous: Item | null,
@@ -38,6 +42,6 @@ export function create(
     ...seed,
     id: generateId(),
     text: seed.text ?? "",
-    sortOrder: mudder(previous?.sortOrder ?? "", next?.sortOrder ?? "")[0],
+    sortOrder: getSortOrder(previous, next),
   };
 }

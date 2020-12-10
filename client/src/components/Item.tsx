@@ -28,11 +28,11 @@ function ItemComponent({ item }: { item: ItemTree }) {
           tw="absolute -top-full focus:(static bg-red-200) w-64 h-16 block"
           ref={inputRef}
         />
-        <p>
-          Sort Order: {item.value.sortOrder} / {JSON.stringify(item.value)}
-        </p>
         <p tw="bg-gray-200 w-64 h-16" onClick={() => inputRef.current!.focus()}>
           {item.value.text}
+        </p>
+        <p>
+          Sort Order: {item.value.sortOrder} / {JSON.stringify(item.value)}
         </p>
         <button
           onClick={(e) => {
