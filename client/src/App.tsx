@@ -5,7 +5,7 @@ import ItemList from "./components/ItemList";
 import appState from "./lib/appState";
 
 function App() {
-  return <ItemList items={appState.items} parent={null} />;
+  return <ItemList items={appState.items} />;
 }
 
 export default observer(App);

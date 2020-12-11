@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, KeyboardEvent } from "react";
 import "twin.macro";
 import { observer } from "mobx-react-lite";
 
@@ -8,6 +8,33 @@ import type { ItemTree } from "../lib/appState";
 
 function ItemComponent({ item }: { item: ItemTree }) {
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.shiftKey && event.key === "Tab") {
+      event.preventDefault();
+      appState.unindent(item);
+    } else if (event.key === "Tab") {
+      event.preventDefault();
+      appState.indent(item);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      appState.insertNewItem(item, true);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      appState.focusPrevious(item);
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      appState.focusNext(item);
+    } else {
+      console.log(event.key);
+    }
+  }
+
+  console.log("focus?", item.id, item.focus);
+
+  useEffect(() => {
+    if (item.focus) inputRef.current?.focus();
+  });
 
   return (
     <li>
@@ -27,6 +54,7 @@ function ItemComponent({ item }: { item: ItemTree }) {
           placeholder="Empty item..."
           tw="absolute -top-full focus:(static bg-red-200) w-64 h-16 block"
           ref={inputRef}
+          onKeyDown={onKeyDown}
         />
         <p tw="bg-gray-200 w-64 h-16" onClick={() => inputRef.current!.focus()}>
           {item.text}

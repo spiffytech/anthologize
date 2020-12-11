@@ -1,4 +1,4 @@
-import { makeAutoObservable, toJS } from "mobx";
+import { makeAutoObservable, observable, toJS } from "mobx";
 
 import { Item, create as createItem, getSortOrder } from "./item";
 
@@ -12,7 +12,6 @@ function itemTreeComparator(a: ItemTree, b: ItemTree): -1 | 0 | 1 {
 }
 
 export class AppState {
-  value = 0;
   items: ItemTree[] = [];
 
   constructor() {
@@ -89,17 +88,92 @@ export class AppState {
     uncles.sort(itemTreeComparator);
   }
 
-  insertNewItem(currentItem: ItemTree | null, insertAfterItem: boolean): Item {
+  /**
+   * Traverses the tree one level at a time, applying an optional callback to
+   * each encountered value
+   */
+  walkTree(cb?: (item: ItemTree) => void): void {
+    // Have to create a new array, otherwise we're modifying the underlying
+    // array and will accidentally append all values in the tree to the tree
+    // root
+    const toTraverse: ItemTree[] = [...this.items];
+    for (let curr of toTraverse) {
+      if (cb) cb(curr);
+      toTraverse.push(...curr.children);
+    }
+  }
+
+  setFocus(item: ItemTree): void {
+    this.walkTree((curr) => {
+      if (curr.focus && curr !== item) curr.focus = false;
+      //if (curr.id === item.id) curr.focus = true;
+    });
+    item.focus = true;
+  }
+
+  focusPrevious(item: ItemTree): void {
+    function findDeepestChild(item: ItemTree): ItemTree {
+      let ret = item;
+      while (true) {
+        if (ret.children.length > 0) {
+          ret = ret.children[ret.children.length - 1];
+          continue;
+        }
+        break;
+      }
+      return ret;
+    }
+
+    const [olderSibling] = this.getNeighbors(item);
+    const parent = item.parent;
+    if (!olderSibling) {
+      if (parent) {
+        this.setFocus(parent);
+      }
+      return;
+    }
+    this.setFocus(findDeepestChild(olderSibling));
+  }
+
+  focusNext(item: ItemTree): void {
+    // Go deeper before going lateral
+    if (item.children.length > 0) {
+      this.setFocus(item.children[0]);
+      return;
+    }
+    const [, youngerSibling] = this.getNeighbors(item);
+    // Return our neighbor if we can't go deeper
+    if (youngerSibling) {
+      this.setFocus(youngerSibling);
+      return;
+    }
+    // Work our way up the tree until we find _someone_ with a sibling
+    let parent = item.parent;
+    while (true) {
+      if (!parent) return;
+      if (parent.children.length > 0) {
+        this.setFocus(parent.children[0]);
+        return;
+      }
+      parent = parent.parent;
+    }
+  }
+
+  insertNewItem(
+    currentItem: ItemTree | null,
+    insertAfterItem: boolean
+  ): ItemTree {
     // Handles the first item in the tree
     if (!currentItem) {
-      const newItem = createItem({ parentId: null }, null, null);
-      const newItemTree: ItemTree = {
+      const newItem = createItem({ parentId: null, focus: false }, null, null);
+      const newItemTree: ItemTree = observable({
         ...newItem,
         children: [],
         parent: null,
-      };
+      });
       this.items.push(newItemTree);
-      return newItem;
+      this.setFocus(newItemTree);
+      return newItemTree;
     }
 
     const currentItemNeighbors = this.getNeighbors(currentItem);
@@ -109,16 +183,16 @@ export class AppState {
     console.log("new neighbors", toJS(previous), toJS(next));
 
     const newItem = createItem(
-      { parentId: currentItem.parent?.id ?? null },
+      { parentId: currentItem.parent?.id ?? null, focus: false },
       previous,
       next
     );
     console.log("new item", toJS(newItem));
-    const newItemTree: ItemTree = {
+    const newItemTree: ItemTree = observable({
       ...newItem,
       children: [],
       parent: currentItem.parent,
-    };
+    });
     const siblings = this.getSiblings(currentItem);
     siblings.push(newItemTree);
     siblings.sort(itemTreeComparator);
@@ -128,7 +202,8 @@ export class AppState {
     const shouldIndent = insertAfterItem && currentItem.children.length > 0;
     if (shouldIndent) this.indent(newItemTree);
 
-    return newItem;
+    this.setFocus(newItemTree);
+    return newItemTree;
   }
 
   /**

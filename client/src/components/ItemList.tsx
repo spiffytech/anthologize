@@ -7,13 +7,7 @@ import appState from "../lib/appState";
 import type { ItemTree } from "../lib/appState";
 //import type { Item } from '../lib/item';
 
-function ItemList({
-  items,
-  parent,
-}: {
-  items: ItemTree[];
-  parent: ItemTree | null;
-}) {
+function ItemList({ items }: { items: ItemTree[] }) {
   console.log(
     "children",
     items.map((item) => item.children)
@@ -24,11 +18,7 @@ function ItemList({
         <React.Fragment key={item.id}>
           <ItemComponent item={item} key={item.id + "-item"} />
           {item.children.length > 0 ? (
-            <ItemList
-              items={item.children}
-              parent={item}
-              key={item.id + "-children"}
-            />
+            <ItemList items={item.children} key={item.id + "-children"} />
           ) : null}
         </React.Fragment>
       ))}
