@@ -12,7 +12,15 @@ function itemTreeComparator(a: ItemTree, b: ItemTree): -1 | 0 | 1 {
 }
 
 export class AppState {
-  items: ItemTree[] = [];
+  tree: ItemTree = {
+    text: "Root",
+    id: "root",
+    parent: null,
+    parentId: null,
+    sortOrder: "m",
+    children: [],
+    focus: true,
+  };
 
   constructor() {
     makeAutoObservable(this);
@@ -51,6 +59,7 @@ export class AppState {
   */
 
   indent(item: ItemTree) {
+    console.log("Running indenter...");
     const [newParent] = this.getNeighbors(item);
     // Indenting the first child would be double-indenting something, that
     // doesn't make sense
@@ -75,15 +84,15 @@ export class AppState {
 
   unindent(item: ItemTree) {
     // Top of the tree
-    if (!item.parent) return;
-    const [, uncle] = this.getNeighbors(item.parent);
-    const uncles = this.getSiblings(item.parent);
+    if (item === this.tree || item.parent === this.tree) return;
+    const [, uncle] = this.getNeighbors(item.parent!);
+    const uncles = this.getSiblings(item.parent!);
     const siblings = this.getSiblings(item);
     const indexAmongSiblings = siblings.indexOf(item);
     siblings.splice(indexAmongSiblings, 1);
-    item.parentId = item.parent?.parentId;
+    item.parentId = item.parent!.parentId;
     item.sortOrder = getSortOrder(item.parent, uncle);
-    item.parent = item.parent?.parent;
+    item.parent = item.parent!.parent;
     uncles.push(item);
     uncles.sort(itemTreeComparator);
   }
@@ -96,7 +105,7 @@ export class AppState {
     // Have to create a new array, otherwise we're modifying the underlying
     // array and will accidentally append all values in the tree to the tree
     // root
-    const toTraverse: ItemTree[] = [...this.items];
+    const toTraverse: ItemTree[] = [this.tree, ...this.tree.children];
     for (let curr of toTraverse) {
       if (cb) cb(curr);
       toTraverse.push(...curr.children);
@@ -106,8 +115,8 @@ export class AppState {
   setFocus(item: ItemTree): void {
     this.walkTree((curr) => {
       if (curr.focus && curr !== item) curr.focus = false;
-      //if (curr.id === item.id) curr.focus = true;
     });
+    console.log("Applying focus...", toJS(item));
     item.focus = true;
   }
 
@@ -126,6 +135,7 @@ export class AppState {
 
     const [olderSibling] = this.getNeighbors(item);
     const parent = item.parent;
+    console.log("previous", toJS(olderSibling), toJS(parent), toJS(item));
     if (!olderSibling) {
       if (parent) {
         this.setFocus(parent);
@@ -147,43 +157,44 @@ export class AppState {
       this.setFocus(youngerSibling);
       return;
     }
+    if (item === this.tree) return;
     // Work our way up the tree until we find _someone_ with a sibling
-    let parent = item.parent;
+    let cursor = item.parent!;
+    console.log("Starting with parent", toJS(cursor));
     while (true) {
-      if (!parent) return;
-      if (parent.children.length > 0) {
-        this.setFocus(parent.children[0]);
+      const [, cursorSibling] = this.getNeighbors(cursor);
+      console.log("Evaluating", toJS(cursorSibling));
+      if (cursorSibling) {
+        this.setFocus(cursorSibling);
         return;
+      } else if (cursor === this.tree) {
+        // We reached the top of the tree and found no more neighbors
+        return;
+      } else {
+        cursor = cursor.parent!;
       }
-      parent = parent.parent;
     }
   }
 
-  insertNewItem(
-    currentItem: ItemTree | null,
-    insertAfterItem: boolean
-  ): ItemTree {
-    // Handles the first item in the tree
-    if (!currentItem) {
-      const newItem = createItem({ parentId: null, focus: false }, null, null);
-      const newItemTree: ItemTree = observable({
-        ...newItem,
-        children: [],
-        parent: null,
-      });
-      this.items.push(newItemTree);
-      this.setFocus(newItemTree);
-      return newItemTree;
+  getNewItemParent(currentItem: ItemTree): ItemTree {
+    // If the user hits 'enter' on the root of a new indentation level we want
+    // to add the new item to the top of the indented set, like Workflowy does.
+    if (currentItem.children.length > 0 || currentItem === this.tree) {
+      return currentItem;
     }
+    return currentItem.parent!;
+  }
 
+  insertNewItem(currentItem: ItemTree, insertAfterItem: boolean): ItemTree {
     const currentItemNeighbors = this.getNeighbors(currentItem);
     const [previous, next] = insertAfterItem
       ? [currentItem, currentItemNeighbors[1]]
       : [currentItemNeighbors[0], currentItem];
     console.log("new neighbors", toJS(previous), toJS(next));
 
+    const parent = this.getNewItemParent(currentItem);
     const newItem = createItem(
-      { parentId: currentItem.parent?.id ?? null, focus: false },
+      { parentId: parent.id, focus: false },
       previous,
       next
     );
@@ -191,16 +202,10 @@ export class AppState {
     const newItemTree: ItemTree = observable({
       ...newItem,
       children: [],
-      parent: currentItem.parent,
+      parent,
     });
-    const siblings = this.getSiblings(currentItem);
-    siblings.push(newItemTree);
-    siblings.sort(itemTreeComparator);
-
-    // If the user hits 'enter' on the root of a new indentation level we want
-    // to add the new item to the top of the indented set, like Workflowy does.
-    const shouldIndent = insertAfterItem && currentItem.children.length > 0;
-    if (shouldIndent) this.indent(newItemTree);
+    parent.children.push(newItemTree);
+    parent.children.sort(itemTreeComparator);
 
     this.setFocus(newItemTree);
     return newItemTree;
@@ -213,7 +218,7 @@ export class AppState {
    */
   getNeighbors(item: ItemTree): [ItemTree | null, ItemTree | null] {
     // No parent means we're operating at the tree root
-    const siblings = item.parent?.children ?? this.items;
+    const siblings = this.getSiblings(item);
     const indexAmongSiblings = siblings.indexOf(item);
     console.log("indexAmongSiblings", indexAmongSiblings, toJS(siblings));
     return [
@@ -225,7 +230,8 @@ export class AppState {
   }
 
   getSiblings(item: ItemTree): ItemTree[] {
-    return item.parent?.children ?? this.items;
+    // No parent means it's the tree root
+    return item.parent?.children ?? [];
   }
 
   setItemText(item: Item, text: string) {
