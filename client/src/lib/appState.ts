@@ -198,10 +198,11 @@ export class AppState {
     console.log("new neighbors", toJS(previous), toJS(next));
 
     const parent = this.getNewItemParent(currentItem);
+    const insertAtNewLevel = parent === currentItem;
     const newItem = createItem(
       { parentId: parent.id, focus: false },
-      previous,
-      next
+      insertAtNewLevel ? null : previous,
+      insertAtNewLevel ? parent.children[0] : next
     );
     console.log("new item", toJS(newItem));
     const newItemTree: ItemTree = observable({
