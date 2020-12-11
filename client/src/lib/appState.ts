@@ -8,6 +8,11 @@ export interface ItemTree extends Item {
 }
 
 function itemTreeComparator(a: ItemTree, b: ItemTree): -1 | 0 | 1 {
+  // mudder handles insertions between 'x' and 'y' by making the in-between
+  // value 'xx', so prefixes need to get sorted after longer strings
+  if (a.sortOrder.startsWith(b.sortOrder)) return -1;
+
+  // Apply regular alphabetical sort from here
   return a.sortOrder < b.sortOrder ? -1 : 1;
 }
 
