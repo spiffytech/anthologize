@@ -50,6 +50,14 @@ function ItemComponent({ item }: { item: ItemTree }) {
         >
           Indent
         </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            appState.unindent(item);
+          }}
+        >
+          Unindent
+        </button>
       </article>
     </li>
   );

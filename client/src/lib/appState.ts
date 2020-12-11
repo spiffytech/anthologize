@@ -74,6 +74,21 @@ export class AppState {
     item.parent.children.sort(itemTreeComparator);
   }
 
+  unindent(item: ItemTree) {
+    // Top of the tree
+    if (!item.parent) return;
+    const [, uncle] = this.getNeighbors(item.parent);
+    const uncles = this.getSiblings(item.parent);
+    const siblings = this.getSiblings(item);
+    const indexAmongSiblings = siblings.indexOf(item);
+    siblings.splice(indexAmongSiblings, 1);
+    item.parentId = item.parent?.parentId;
+    item.sortOrder = getSortOrder(item.parent, uncle);
+    item.parent = item.parent?.parent;
+    uncles.push(item);
+    uncles.sort(itemTreeComparator);
+  }
+
   insertNewItem(currentItem: ItemTree | null, insertAfterItem: boolean): Item {
     // Handles the first item in the tree
     if (!currentItem) {
