@@ -1,4 +1,4 @@
-import { useEffect, useRef, KeyboardEvent, Fragment } from "react";
+import { useRef, KeyboardEvent } from "react";
 import "twin.macro";
 import { observer } from "mobx-react-lite";
 
@@ -8,36 +8,49 @@ import ItemList from "./ItemList";
 import appState from "../lib/appState";
 import type { ItemTree } from "../lib/appState";
 
-function ItemComponent({ item }: { item: ItemTree }) {
+function ItemInput({ item }: { item: ItemTree }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  console.log("Ref:", inputRef);
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.shiftKey && event.key === "Tab") {
+    if (event.altKey && event.shiftKey && event.key === "ArrowLeft") {
       event.preventDefault();
       appState.unindent(item);
-    } else if (event.key === "Tab") {
+    } else if (event.altKey && event.shiftKey && event.key === "ArrowRight") {
       event.preventDefault();
       appState.indent(item);
     } else if (event.key === "Enter") {
       event.preventDefault();
       appState.insertNewItem(item, true);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      appState.focusPrevious(item);
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      appState.focusNext(item);
     } else {
       console.log(event.key);
     }
   }
 
-  console.log("focus?", item.id, item.focus);
+  return (
+    <>
+      <input
+        value={item.text}
+        onChange={(e) => appState.setItemText(item, e.target.value)}
+        placeholder="Empty item..."
+        tw="absolute -top-full focus:(static bg-red-200) w-64 h-16 block"
+        ref={inputRef}
+        onKeyDown={onKeyDown}
+        // React nukes our ref when we rearrange the tree because keys only work
+        // for siblings, not cousins. So we have to manually track the
+        // currently-focused element so we can refocus it when the DOM tree gets
+        // shuffled.
+        onFocus={() => appState.setFocus(item)}
+        autoFocus={appState.autoFocus === item}
+      />
+      <p tw="bg-gray-200 w-64 h-16" onClick={() => inputRef.current!.focus()}>
+        {item.text}
+      </p>
+    </>
+  );
+}
 
-  useEffect(() => {
-    if (item.focus) inputRef.current?.focus();
-  });
-
+function ItemComponent({ item }: { item: ItemTree }) {
   return (
     <>
       <li>
@@ -47,24 +60,12 @@ function ItemComponent({ item }: { item: ItemTree }) {
               e.preventDefault();
               appState.insertNewItem(item, false);
             }}
+            tabIndex={-1}
           >
             Insert before
           </button>
 
-          <input
-            value={item.text}
-            onChange={(e) => appState.setItemText(item, e.target.value)}
-            placeholder="Empty item..."
-            tw="absolute -top-full focus:(static bg-red-200) w-64 h-16 block"
-            ref={inputRef}
-            onKeyDown={onKeyDown}
-          />
-          <p
-            tw="bg-gray-200 w-64 h-16"
-            onClick={() => inputRef.current!.focus()}
-          >
-            {item.text}
-          </p>
+          <ItemInput item={item} />
           <p>
             Sort Order: {item.sortOrder} / {item.id}
           </p>
@@ -73,6 +74,7 @@ function ItemComponent({ item }: { item: ItemTree }) {
               e.preventDefault();
               appState.insertNewItem(item, true);
             }}
+            tabIndex={-1}
           >
             Insert after
           </button>
@@ -81,6 +83,7 @@ function ItemComponent({ item }: { item: ItemTree }) {
               e.preventDefault();
               appState.indent(item);
             }}
+            tabIndex={-1}
           >
             Indent
           </button>
@@ -89,6 +92,7 @@ function ItemComponent({ item }: { item: ItemTree }) {
               e.preventDefault();
               appState.unindent(item);
             }}
+            tabIndex={-1}
           >
             Unindent
           </button>

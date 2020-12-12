@@ -13,7 +13,6 @@ export interface Item {
   parentId: string | null;
   sortOrder: string;
   text: string;
-  focus: boolean;
 }
 
 interface NewItem extends Omit<Item, "id" | "sortOrder" | "text"> {

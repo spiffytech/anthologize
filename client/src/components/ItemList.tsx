@@ -11,7 +11,7 @@ function ItemList({ items }: { items: ItemTree[] }) {
   return (
     <ul tw="ml-8">
       {items.map((item) => (
-        <ItemComponent item={item} key={item.id + "-item"} />
+        <ItemComponent item={item} key={"item-" + item.id} />
       ))}
     </ul>
   );

@@ -24,8 +24,9 @@ export class AppState {
     parentId: null,
     sortOrder: "m",
     children: [],
-    focus: true,
   };
+
+  autoFocus: ItemTree | null = null;
 
   constructor() {
     makeAutoObservable(this);
@@ -118,11 +119,7 @@ export class AppState {
   }
 
   setFocus(item: ItemTree): void {
-    this.walkTree((curr) => {
-      if (curr.focus && curr !== item) curr.focus = false;
-    });
-    console.log("Applying focus...", toJS(item));
-    item.focus = true;
+    this.autoFocus = item;
   }
 
   focusPrevious(item: ItemTree): void {
@@ -200,7 +197,7 @@ export class AppState {
     const parent = this.getNewItemParent(currentItem);
     const insertAtNewLevel = parent === currentItem;
     const newItem = createItem(
-      { parentId: parent.id, focus: false },
+      { parentId: parent.id },
       insertAtNewLevel ? null : previous,
       insertAtNewLevel ? parent.children[0] : next
     );
