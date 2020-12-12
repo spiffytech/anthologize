@@ -1,8 +1,7 @@
 import { useRef, KeyboardEvent } from "react";
-import "twin.macro";
+import tw from "twin.macro";
 import { observer } from "mobx-react-lite";
 
-import "./Item.css";
 import ItemList from "./ItemList";
 
 import appState from "../lib/appState";
@@ -17,6 +16,8 @@ function getItemInputs(ref: HTMLInputElement) {
 }
 
 const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
+  const autoFocus = appState.autoFocus === item;
+
   const inputRef = useRef<HTMLInputElement>(null);
   console.log("Ref:", inputRef);
 
@@ -44,6 +45,7 @@ const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
   return (
     <>
       <input
+        id={`item-input=${item.id}`}
         className="main"
         value={item.text}
         onChange={(e) => appState.setItemText(item, e.target.value)}
@@ -56,11 +58,17 @@ const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
         // currently-focused element so we can refocus it when the DOM tree gets
         // shuffled.
         onFocus={() => appState.setFocus(item)}
-        autoFocus={appState.autoFocus === item}
+        onBlur={() => appState.unFocus(item)}
+        autoFocus={autoFocus}
       />
-      <p tw="bg-gray-200 w-64 h-16" onClick={() => inputRef.current!.focus()}>
+      <output
+        htmlFor={`item-input-${item.id}`}
+        tw="bg-gray-200 w-64 h-16"
+        css={[autoFocus && tw`hidden`, !autoFocus && tw`block`]}
+        onClick={() => inputRef.current!.focus()}
+      >
         {item.text}
-      </p>
+      </output>
     </>
   );
 });

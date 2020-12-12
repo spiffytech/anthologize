@@ -122,6 +122,12 @@ export class AppState {
     this.autoFocus = item;
   }
 
+  unFocus(item: ItemTree): void {
+    // Just in case onFocus/onBlur fire in a weird order when moving between
+    // list items
+    if (this.autoFocus === item) this.autoFocus = null;
+  }
+
   focusPrevious(item: ItemTree): void {
     function findDeepestChild(item: ItemTree): ItemTree {
       let ret = item;
