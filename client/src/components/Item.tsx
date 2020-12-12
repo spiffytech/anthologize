@@ -16,7 +16,7 @@ function getItemInputs(ref: HTMLInputElement) {
   return { inputs, currentIndex };
 }
 
-function ItemInput({ item }: { item: ItemTree }) {
+const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
   const inputRef = useRef<HTMLInputElement>(null);
   console.log("Ref:", inputRef);
 
@@ -63,7 +63,7 @@ function ItemInput({ item }: { item: ItemTree }) {
       </p>
     </>
   );
-}
+});
 
 function ItemComponent({ item }: { item: ItemTree }) {
   return (
