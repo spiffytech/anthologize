@@ -8,17 +8,31 @@ import ItemList from "./ItemList";
 import appState from "../lib/appState";
 import type { ItemTree } from "../lib/appState";
 
+function getItemInputs(ref: HTMLInputElement) {
+  const inputs = Array.from(
+    document.querySelectorAll<HTMLInputElement>("article.item input.main")
+  );
+  const currentIndex = inputs.indexOf(ref);
+  return { inputs, currentIndex };
+}
+
 function ItemInput({ item }: { item: ItemTree }) {
   const inputRef = useRef<HTMLInputElement>(null);
   console.log("Ref:", inputRef);
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.altKey && event.shiftKey && event.key === "ArrowLeft") {
+    if (event.shiftKey && event.key === "Tab") {
       event.preventDefault();
       appState.unindent(item);
-    } else if (event.altKey && event.shiftKey && event.key === "ArrowRight") {
+    } else if (event.key === "Tab") {
       event.preventDefault();
       appState.indent(item);
+    } else if (event.key === "ArrowUp") {
+      const { inputs, currentIndex } = getItemInputs(inputRef.current!);
+      inputs[currentIndex - 1]?.focus();
+    } else if (event.key === "ArrowDown") {
+      const { inputs, currentIndex } = getItemInputs(inputRef.current!);
+      inputs[currentIndex + 1]?.focus();
     } else if (event.key === "Enter") {
       event.preventDefault();
       appState.insertNewItem(item, true);
@@ -30,6 +44,7 @@ function ItemInput({ item }: { item: ItemTree }) {
   return (
     <>
       <input
+        className="main"
         value={item.text}
         onChange={(e) => appState.setItemText(item, e.target.value)}
         placeholder="Empty item..."
@@ -54,7 +69,7 @@ function ItemComponent({ item }: { item: ItemTree }) {
   return (
     <>
       <li>
-        <article>
+        <article className="item">
           <button
             onClick={(e) => {
               e.preventDefault();
