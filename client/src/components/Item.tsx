@@ -38,6 +38,14 @@ const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
       event.preventDefault();
       const newItemTree = appState.insertNewItem(item, true);
       viewState.setFocus(newItemTree);
+    } else if (
+      event.ctrlKey &&
+      event.shiftKey &&
+      (event.key === "Backspace" || event.key === "Delete")
+    ) {
+      const { inputs, currentIndex } = getItemInputs(inputRef.current!);
+      appState.deleteItem(item);
+      inputs[currentIndex - 1]?.focus();
     } else {
       console.log(event.key);
     }

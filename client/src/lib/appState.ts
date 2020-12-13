@@ -209,6 +209,15 @@ export class AppState {
     return newItemTree;
   }
 
+  deleteItem(item: ItemTree) {
+    // TODO: If we're zoomed in, handle deleting the zoom level root
+    if (item === this.tree) return;
+
+    const siblings = this.getSiblings(item);
+    const indexAmongSiblings = siblings.indexOf(item);
+    siblings.splice(indexAmongSiblings, 1);
+  }
+
   /**
    * Returns the nodes immediately before+after the supplied item in the
    * parent's children array, or null if the item is at the beginning and/or end
