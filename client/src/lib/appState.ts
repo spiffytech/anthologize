@@ -26,8 +26,6 @@ export class AppState {
     children: [],
   };
 
-  autoFocus: ItemTree | null = null;
-
   constructor() {
     makeAutoObservable(this);
   }
@@ -118,16 +116,7 @@ export class AppState {
     }
   }
 
-  setFocus(item: ItemTree): void {
-    this.autoFocus = item;
-  }
-
-  unFocus(item: ItemTree): void {
-    // Just in case onFocus/onBlur fire in a weird order when moving between
-    // list items
-    if (this.autoFocus === item) this.autoFocus = null;
-  }
-
+  /*
   focusPrevious(item: ItemTree): void {
     function findDeepestChild(item: ItemTree): ItemTree {
       let ret = item;
@@ -183,6 +172,7 @@ export class AppState {
       }
     }
   }
+  */
 
   getNewItemParent(currentItem: ItemTree): ItemTree {
     // If the user hits 'enter' on the root of a new indentation level we want
@@ -216,7 +206,6 @@ export class AppState {
     parent.children.push(newItemTree);
     parent.children.sort(itemTreeComparator);
 
-    this.setFocus(newItemTree);
     return newItemTree;
   }
 
@@ -248,4 +237,23 @@ export class AppState {
   }
 }
 
-export default new AppState();
+export class ViewState {
+  autoFocus: ItemTree | null = null;
+
+  constructor(private appState: AppState) {
+    makeAutoObservable(this);
+  }
+
+  setFocus(item: ItemTree): void {
+    this.autoFocus = item;
+  }
+
+  unFocus(item: ItemTree): void {
+    // Just in case onFocus/onBlur fire in a weird order when moving between
+    // list items
+    if (this.autoFocus === item) this.autoFocus = null;
+  }
+}
+
+export const appState = new AppState();
+export const viewState = new ViewState(appState);

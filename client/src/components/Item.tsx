@@ -4,7 +4,7 @@ import { observer } from "mobx-react-lite";
 
 import ItemList from "./ItemList";
 
-import appState from "../lib/appState";
+import { appState, viewState } from "../lib/appState";
 import type { ItemTree } from "../lib/appState";
 
 function getItemInputs(ref: HTMLInputElement) {
@@ -16,7 +16,7 @@ function getItemInputs(ref: HTMLInputElement) {
 }
 
 const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
-  const autoFocus = appState.autoFocus === item;
+  const autoFocus = viewState.autoFocus === item;
 
   const inputRef = useRef<HTMLInputElement>(null);
   console.log("Ref:", inputRef);
@@ -36,7 +36,8 @@ const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
       inputs[currentIndex + 1]?.focus();
     } else if (event.key === "Enter") {
       event.preventDefault();
-      appState.insertNewItem(item, true);
+      const newItemTree = appState.insertNewItem(item, true);
+      viewState.setFocus(newItemTree);
     } else {
       console.log(event.key);
     }
@@ -57,8 +58,8 @@ const ItemInput = observer(function ItemInput({ item }: { item: ItemTree }) {
         // for siblings, not cousins. So we have to manually track the
         // currently-focused element so we can refocus it when the DOM tree gets
         // shuffled.
-        onFocus={() => appState.setFocus(item)}
-        onBlur={() => appState.unFocus(item)}
+        onFocus={() => viewState.setFocus(item)}
+        onBlur={() => viewState.unFocus(item)}
         autoFocus={autoFocus}
       />
       <output

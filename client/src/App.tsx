@@ -2,7 +2,7 @@ import { observer } from "mobx-react-lite";
 import "twin.macro";
 
 import Item from "./components/Item";
-import appState from "./lib/appState";
+import { appState } from "./lib/appState";
 
 function App() {
   return (
