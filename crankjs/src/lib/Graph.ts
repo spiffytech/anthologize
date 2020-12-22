@@ -56,7 +56,7 @@ export default class Graph {
     );
   }
 
-  public outboundEdges(node: Item): ItemEdge[] {
+  outboundEdges(node: Item): ItemEdge[] {
     const edges: Edge[] = this.#graph.outEdges(node.id) as Edge[];
     const itemEdges: ItemEdge[] = edges.map((edge) =>
       this.#graph.edge(edge.v, edge.w)
@@ -64,7 +64,7 @@ export default class Graph {
     return itemEdges.sort((a, b) => a.compare(b));
   }
 
-  public nodeIndexUnderParent(
+  nodeIndexUnderParent(
     node: Item,
     parent: Item
   ): { itemEdges: ItemEdge[]; nodeIndex: number } {
@@ -104,18 +104,39 @@ export default class Graph {
     itemEdges[nodeIndex].sortOrder = newSortOrder;
   }
 
-  pop(node: Item): Item {
+  disown(node: Item) {
+    const parents = this.#graph.inEdges(node.id) as Edge[];
+    parents.map((parent) => this.#graph.removeEdge(parent.v, parent.w));
+  }
+
+  /**
+   * Removes the node from the graph, **and any descendants it orphans**
+   */
+  kill(node: Item) {
+    const successors = this.#graph.successors(node.id) as string[];
+    successors.map((successor) => {
+      const allParentsForSuccessor = this.#graph.inEdges(successor) as Edge[];
+      // Only remove orphaned nodes. Nodes with a living parent must stay in the graph.
+      if (
+        allParentsForSuccessor.filter(
+          (parent) => successors.indexOf(parent.v) === -1
+        ).length > 0
+      ) {
+        return;
+      }
+      this.#graph.removeNode(successor);
+    });
     this.#graph.removeNode(node.id);
-    return node;
   }
 
   changeParent(node: Item, newParent: Item, sortOrder: string): ItemEdge {
+    console.log("changing parent!");
     const edgeFromNewParent = new ItemEdge({
       sortOrder,
       from: newParent,
       to: node,
     });
-    this.pop(node);
+    this.disown(node);
     this.#graph.setEdge(newParent.id, node.id, edgeFromNewParent);
     return edgeFromNewParent;
   }

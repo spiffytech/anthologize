@@ -6,22 +6,22 @@ import type Graph from "./Graph";
 
 export default class Lineage {
   readonly #graph: Graph;
-  readonly ancestors: ItemEdge[];
+  readonly pathFromRoot: ItemEdge[];
   readonly node: Item;
 
   constructor(graph: Graph, ancestors: ItemEdge[]) {
     this.#graph = graph;
     this.node = last(ancestors)?.to ?? this.#graph.root;
-    this.ancestors = ancestors;
+    this.pathFromRoot = ancestors;
   }
 
   get isRoot() {
-    return this.ancestors.length === 0;
+    return this.pathFromRoot.length === 0;
   }
 
   get edge(): ItemEdge | null {
     if (this.isRoot) return null;
-    return last(this.ancestors);
+    return last(this.pathFromRoot);
   }
 
   get hasChildren() {
@@ -32,18 +32,18 @@ export default class Lineage {
     if (this.isRoot) return null;
     return new Lineage(
       this.#graph,
-      this.ancestors.slice(0, this.ancestors.length - 1)
+      this.pathFromRoot.slice(0, this.pathFromRoot.length - 1)
     );
   }
 
-  private edgeAncestors(edge: ItemEdge): ItemEdge[] {
-    return [...this.ancestors, edge];
+  appendToMyPath(edge: ItemEdge): ItemEdge[] {
+    return [...this.pathFromRoot, edge];
   }
 
   get children(): Lineage[] {
     return this.#graph
       .outboundEdges(this.node)
-      .map((edge) => new Lineage(this.#graph, this.edgeAncestors(edge)));
+      .map((edge) => new Lineage(this.#graph, this.appendToMyPath(edge)));
   }
 
   get siblings(): Lineage[] | null {
@@ -53,7 +53,7 @@ export default class Lineage {
       this.parent?.node!
     );
     return siblings.map(
-      (edge) => new Lineage(this.#graph, this.edgeAncestors(edge))
+      (edge) => new Lineage(this.#graph, this.appendToMyPath(edge))
     );
   }
 
@@ -61,19 +61,23 @@ export default class Lineage {
     if (this.isRoot) return [null, null];
     const { nodeIndex, itemEdges: siblings } = this.#graph.nodeIndexUnderParent(
       this.node,
-      this.parent?.node!
+      this.parent!.node
     );
     const [older, younger] = [
       siblings[nodeIndex - 1] ?? null,
       siblings[nodeIndex + 1] ?? null,
     ];
     return [
-      older ? new Lineage(this.#graph, this.edgeAncestors(older)) : null,
-      younger ? new Lineage(this.#graph, this.edgeAncestors(younger)) : null,
+      older
+        ? new Lineage(this.#graph, this.parent!.appendToMyPath(older))
+        : null,
+      younger
+        ? new Lineage(this.#graph, this.parent!.appendToMyPath(younger))
+        : null,
     ];
   }
 
-  addFirstChild(node: Item): Lineage {
+  prependFirstborn(node: Item): Lineage {
     const edge = this.#graph.placeChild(
       node,
       this.node,
@@ -81,7 +85,12 @@ export default class Lineage {
       this.children[0]?.edge ?? null
     );
 
-    return new Lineage(this.#graph, this.edgeAncestors(edge));
+    console.log(
+      "New ancestors:",
+      this.appendToMyPath(edge),
+      `(Appended to: ${this.node.id})`
+    );
+    return new Lineage(this.#graph, this.appendToMyPath(edge));
   }
 
   addOlderSibling(node: Item): Lineage {
@@ -97,7 +106,7 @@ export default class Lineage {
       olderSibling?.edge ?? null
     );
 
-    return new Lineage(this.#graph, this.edgeAncestors(edge));
+    return new Lineage(this.#graph, this.parent!.appendToMyPath(edge));
   }
 
   addYoungerSibling(node: Item): Lineage {
@@ -106,6 +115,19 @@ export default class Lineage {
     }
 
     const [, youngerSibling] = this.neighbors;
+    console.log(
+      "new edge",
+      this.pathFromRoot.map((ancestor) => [ancestor.from.id, ancestor.to.id]),
+      this.parent?.node.id,
+      this.edge,
+      youngerSibling?.edge
+    );
+    console.log(
+      node,
+      this.parent!.node,
+      this.edge,
+      youngerSibling?.edge ?? null
+    );
     const edge = this.#graph.placeChild(
       node,
       this.parent!.node,
@@ -113,7 +135,12 @@ export default class Lineage {
       youngerSibling?.edge ?? null
     );
 
-    return new Lineage(this.#graph, this.edgeAncestors(edge));
+    console.log(
+      "New ancestors:",
+      this.appendToMyPath(edge),
+      `(Created after: ${this.node.id})`
+    );
+    return new Lineage(this.#graph, this.parent!.appendToMyPath(edge));
   }
 
   adopt(lineage: Lineage, sortOrder: string): Lineage {
@@ -123,10 +150,10 @@ export default class Lineage {
 
     const edge = this.#graph.changeParent(lineage.node, this.node, sortOrder);
 
-    return new Lineage(this.#graph, this.edgeAncestors(edge));
+    return new Lineage(this.#graph, this.appendToMyPath(edge));
   }
 
   kill() {
-    this.#graph.pop(this.node);
+    this.#graph.kill(this.node);
   }
 }

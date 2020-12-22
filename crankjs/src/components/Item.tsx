@@ -9,18 +9,18 @@ export default function ItemComponent(
 ) {
   const isInFocus = viewState.isInFocus(lineage);
 
-  // When we unindent we have to refresh the _grandparent_. Rather than prop
-  // drilling, we just emit an event so everything the whole way up the tree can
-  // refresh so we know we're good.
-  this.addEventListener("tree-changed", (event) => {
-    this.refresh();
-  });
+  // When we unindent we have to refresh the _grandparent_. When dragging and
+  // dropping, we have to refresh both ends of the drag-and-drop, _and_ any
+  // 'clone' nodes elsewhere in the tree matching the new parent. Basically, we
+  // have to rerender arbitrary places in the tree, so we might as well rerender
+  // the whole tree, rather than keep track of exactly what needs rerendering.
   const emitTreeChanged = () => {
-    this.refresh();
     this.dispatchEvent(
       new CustomEvent("tree-changed", { bubbles: true, detail: { lineage } })
     );
   };
+
+  let inputEl: HTMLTextAreaElement | null = null;
 
   function onKeyDown(event: any) {
     if (event.shiftKey && event.key === "Tab") {
@@ -35,7 +35,12 @@ export default function ItemComponent(
       viewState.arrowDown();
     } else if (event.key === "Enter") {
       event.preventDefault();
-      viewState.insertAtCurrentPosition();
+      viewState.insertAtCurrentPosition(
+        // TODO: Do I actually want to copy this from Workflowy?
+        !lineage.isRoot &&
+          inputEl?.selectionEnd === 0 &&
+          lineage.node.text.length > 0
+      );
     } else if (
       event.ctrlKey &&
       event.shiftKey &&
@@ -55,7 +60,7 @@ export default function ItemComponent(
       class="bg-gray-200 w-64 h-16 block"
       onclick={() => {
         viewState.setFocus(lineage);
-        this.refresh();
+        emitTreeChanged();
       }}
       role="textbox"
       ariaReadonly="false"
@@ -72,9 +77,10 @@ export default function ItemComponent(
       } focus:bg-red-200 w-64 h-16 block border`}
       tabindex={-1}
       crank-ref={(el: HTMLTextAreaElement) => {
-        setTimeout(() => {
+        requestAnimationFrame(() => {
+          inputEl = el;
           if (isInFocus) el.focus();
-        }, 0);
+        });
       }}
       value={lineage.node.text}
       oninput={(e: any) => {
@@ -83,10 +89,12 @@ export default function ItemComponent(
       }}
       placeholder="Empty item..."
       onkeydown={onKeyDown}
+      /*
       onfocus={() => {
         viewState.setFocus(lineage);
         emitTreeChanged();
       }}
+      */
       onblur={() => {
         viewState.removeFocus(lineage);
         emitTreeChanged();
@@ -106,6 +114,13 @@ export default function ItemComponent(
     <ul class="ml-8">
       <li crank-key={lineage.node.id}>
         <article>
+          <p>
+            {lineage.pathFromRoot.map((ancestor) => `${ancestor.from.id} -> `)}
+            <span class="font-bold">
+              {lineage.node.id} {isInFocus ? `($)` : null}
+            </span>{" "}
+          </p>
+          <p>#{lineage.edge?.sortOrder}</p>
           {input}
           {isInFocus ? null : renderedText}
         </article>

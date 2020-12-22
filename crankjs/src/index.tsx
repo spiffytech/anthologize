@@ -1,4 +1,4 @@
-import { createElement } from "@bikeshaving/crank";
+import { Context, createElement } from "@bikeshaving/crank";
 import { renderer } from "@bikeshaving/crank/dom";
 
 import Graph from "./lib/Graph";
@@ -11,7 +11,11 @@ const graph = new Graph();
 const rootLineage = new Lineage(graph, []);
 const viewState = new ViewState({ lineage: rootLineage });
 
-renderer.render(
-  <Item lineage={rootLineage} viewState={viewState} />,
-  document.body
-);
+function App(this: Context) {
+  this.addEventListener("tree-changed", () => {
+    this.refresh();
+  });
+  return <Item lineage={rootLineage} viewState={viewState} />;
+}
+
+renderer.render(<App />, document.body);

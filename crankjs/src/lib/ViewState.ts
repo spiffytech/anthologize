@@ -45,7 +45,7 @@ export default class ViewState {
       relative = last(relative.children);
     }
 
-    this.#focusedLineage = relative;
+    this.setFocus(relative);
     return relative;
   }
 
@@ -62,7 +62,7 @@ export default class ViewState {
       if (relative.isRoot) return null;
       const [, youngerSibling] = relative.neighbors;
       if (youngerSibling) {
-        this.#focusedLineage = youngerSibling;
+        this.setFocus(youngerSibling);
         return youngerSibling;
       }
       relative = relative.parent!;
@@ -75,11 +75,14 @@ export default class ViewState {
     const node = new Item({ text: "" });
 
     if (this.#focusedLineage.isRoot || this.#focusedLineage.hasChildren) {
-      this.#focusedLineage = this.#focusedLineage.addFirstChild(node);
+      console.log("Inserting firstborn");
+      this.setFocus(this.#focusedLineage.prependFirstborn(node));
     } else if (addAsOlder) {
-      this.#focusedLineage = this.#focusedLineage.addOlderSibling(node);
+      console.log("Inserting older");
+      this.setFocus(this.#focusedLineage.addOlderSibling(node));
     } else {
-      this.#focusedLineage = this.#focusedLineage.addYoungerSibling(node);
+      console.log("Inserting younger");
+      this.setFocus(this.#focusedLineage.addYoungerSibling(node));
     }
   }
 
@@ -94,13 +97,16 @@ export default class ViewState {
       last(olderSibling.children)?.edge?.sortOrder ?? null,
       null
     );
-    this.#focusedLineage = olderSibling.adopt(this.#focusedLineage, sortOrder);
+    this.setFocus(olderSibling.adopt(this.#focusedLineage, sortOrder));
   }
 
   unindent() {
     if (!this.#focusedLineage) return;
-    if (this.#focusedLineage.parent?.isRoot) return;
+    if (this.#focusedLineage.isRoot || this.#focusedLineage.parent?.isRoot) {
+      return;
+    }
 
+    console.log("Unindenting");
     const parent = this.#focusedLineage.parent!;
     const [, before] = parent.neighbors;
 
@@ -109,9 +115,6 @@ export default class ViewState {
       before?.edge?.sortOrder ?? null
     );
 
-    this.#focusedLineage = parent.parent!.adopt(
-      this.#focusedLineage,
-      sortOrder
-    );
+    this.setFocus(parent.parent!.adopt(this.#focusedLineage, sortOrder));
   }
 }
