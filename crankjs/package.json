@@ -8,8 +8,10 @@
   "author": "spiffytech",
   "license": "AGPL-3.0-only",
   "devDependencies": {
+    "@types/debug": "^4.1.5",
     "@types/graphlib": "^2.1.7",
     "@types/mudder": "^1.0.0",
+    "@types/page": "^1.11.0",
     "autoprefixer": "^10.1.0",
     "parcel-bundler": "^1.12.4",
     "postcss": "^8.2.1",
@@ -18,8 +20,12 @@
   },
   "dependencies": {
     "@bikeshaving/crank": "^0.3.7",
+    "axios": "^0.21.1",
+    "debug": "^4.3.1",
     "graphlib": "^2.1.8",
-    "mudder": "^1.0.9"
+    "joi": "^17.3.0",
+    "mudder": "^1.0.9",
+    "page": "^1.11.6"
   },
   "browserslist": [
     "since 2019"
