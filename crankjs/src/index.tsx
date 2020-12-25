@@ -13,6 +13,17 @@ import Login from "./components/Login";
 
 const debug = Debug("anthologize:index");
 
+async function* initSse(refresh: () => void) {
+  while (true) {
+    yield null;
+    await new Promise((resolve) => {
+      const sse = new EventSource("/api/app/event-bus", {
+        withCredentials: true,
+      });
+    });
+  }
+}
+
 async function* App(this: Context) {
   const debugSse = Debug("anthologize:app:sse");
 
@@ -25,48 +36,56 @@ async function* App(this: Context) {
   const viewState = new ViewState({ lineage: rootLineage });
 
   debugSse("Connecting to event bus");
-  yield <div>Connecting...</div>;
+  const connectingMessage = <div>Connecting...</div>;
+  yield connectingMessage;
 
-  let sse: EventSource | null = null;
+  debugSse("Validating auth");
+  const response = await fetch("/api/auth/check", { credentials: "include" });
+  if (response.status >= 400) {
+    debugSse("We are unauthenticated");
+    page("/login");
+    return;
+  }
+  debugSse("We are authenticated");
+
+  let sse: EventSource;
   try {
-    while (true) {
-      try {
-        try {
-          debugSse("Validating auth");
-          await axios.get("/api/auth/check", { withCredentials: true });
-          debugSse("We are authenticated");
-        } catch {
-          debugSse("We are unauthenticated");
-          page("/login");
-          return;
-        }
-
-        debugSse("Initializing EventSource");
-        sse = await new Promise<EventSource>((resolve, reject) => {
-          const sse = new EventSource("/api/app/event-bus", {
-            withCredentials: true,
-          });
-          sse.onmessage = (event) => {
-            console.log(event);
-          };
-          sse.onopen = () => resolve(sse);
-
-          sse.onerror = reject;
-        });
+    const initSse = () => {
+      debugSse("Initializing EventSource");
+      sse = new EventSource("/api/app/event-bus", {
+        withCredentials: true,
+      });
+      sse.addEventListener("heartbeat", (event) => {
+        console.log(event);
+      });
+      sse.onopen = () => {
         debugSse("EventSource initialized");
+        this.refresh();
+      };
 
+      sse.onerror = (err) => {
+        console.error(err);
+        // Firefox doesn't automatically reconnect if the server closes the connection
+        if (sse.readyState === 2) sse = initSse();
+        this.refresh();
+      };
+
+      return sse;
+    };
+    sse = initSse();
+
+    for await (let props of this) {
+      if (sse.readyState === 0) {
+        yield connectingMessage;
+      } else if (sse.readyState === 1) {
         yield <Item lineage={rootLineage} viewState={viewState} />;
-        for await (let props of this) {
-          yield <Item lineage={rootLineage} viewState={viewState} />;
-        }
-      } catch (ex) {
-        debugSse("EventSource promise rejected with %O", ex);
-        yield <div>We can't connect to the server right now</div>;
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+      } else {
+        yield <div>Connection to the server was closed</div>;
       }
     }
   } finally {
-    sse?.close();
+    debugSse("closing the connection");
+    sse!.close();
   }
 }
 

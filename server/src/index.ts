@@ -32,6 +32,7 @@ app.use(
     expires: new Date(new Date().getTime() + 1000 * 86400 * 14),
     sameSite: "strict",
     httpOnly: true,
+    secure: true,
   })
 );
 app.use(bodyParser.json());
