@@ -67,6 +67,36 @@ export default function* Login(this: Context) {
         <form>
           {error && <p>{error}</p>}
 
+          <label class={`${!showSignup ? "text-red-500" : null}`}>
+            <input
+              type="radio"
+              name="auth-action"
+              class="hidden"
+              onchange={() => {
+                showSignup = false;
+                this.refresh();
+              }}
+              value="login"
+              checked={!showSignup}
+            />
+            Log In
+          </label>
+
+          <label class={`${showSignup ? "text-red-500" : null}`}>
+            <input
+              type="radio"
+              name="auth-action"
+              class="hidden"
+              onchange={() => {
+                showSignup = true;
+                this.refresh();
+              }}
+              value="signup"
+              checked={showSignup}
+            />
+            Log In
+          </label>
+
           <input
             oninput={setValue("email")}
             type="email"
