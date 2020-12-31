@@ -15,14 +15,15 @@ export function requireAuthn(req: Request, res: Response, next: NextFunction) {
 
 export function refreshSession(
   req: Request,
-  _res: Response,
+  res: Response,
   next: NextFunction
 ) {
   if (!req.session) req.session = {};
 
   if (
+    req.session!.id &&
     new Date().getTime() - new Date(req.session!.lastSessionLookup).getTime() >
-    60000
+      60000
   ) {
     const sessionRecord = db
       .prepare("select id from sessions where id=?")
@@ -33,6 +34,10 @@ export function refreshSession(
     } else {
       req.session!.lastSessionLookup = new Date().toISOString();
     }
+  }
+
+  if (req.session.id) {
+    res.locals.email = req.session.email;
   }
 
   req.session.lastSeen = new Date().toISOString();

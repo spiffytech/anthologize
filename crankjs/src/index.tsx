@@ -1,14 +1,14 @@
 import { Context, createElement } from "@bikeshaving/crank";
 import { renderer } from "@bikeshaving/crank/dom";
-import axios from "axios";
 import Debug from "debug";
 import page from "page";
 
-import Graph from "./lib/Graph";
-import Lineage from "./lib/Lineage";
 import ViewState from "./lib/ViewState";
 
-import Item from "./components/Item";
+import type Item from "./shared/Item";
+import type Bullet from "./shared/Bullet";
+
+import ListComponent from "./components/List";
 import Login from "./components/Login";
 
 const debug = Debug("anthologize:index");
@@ -31,9 +31,10 @@ async function* App(this: Context) {
     this.refresh();
   });
 
-  const graph = new Graph();
-  const rootLineage = new Lineage(graph, []);
-  const viewState = new ViewState({ lineage: rootLineage });
+  const items: Map<string, Item> = new Map();
+  const bullets: Bullet[] = [];
+
+  const viewState = new ViewState({ tree: bullets, items, ownerEmail: "" });
 
   debugSse("Connecting to event bus");
   const connectingMessage = <div>Connecting...</div>;
@@ -56,15 +57,26 @@ async function* App(this: Context) {
         withCredentials: true,
       });
       sse.addEventListener("heartbeat", (event) => {
-        console.log(event);
+        debugSse("Received heartbeat");
       });
       sse.onopen = () => {
         debugSse("EventSource initialized");
         this.refresh();
       };
 
+      sse.addEventListener("all-data", ((event: MessageEvent) => {
+        const {
+          bullets: bulletsIn,
+          items: itemsIn,
+        }: { bullets: Bullet[]; items: Item[] } = JSON.parse(event.data);
+        console.log(bulletsIn, itemsIn);
+        bullets.splice(0, 0, ...bulletsIn);
+        itemsIn.forEach((item) => items.set(item.id, item));
+        this.refresh();
+      }) as any);
+
       sse.onerror = (err) => {
-        console.error(err);
+        console.error("sse error", err);
         // Firefox doesn't automatically reconnect if the server closes the connection
         if (sse.readyState === 2) sse = initSse();
         this.refresh();
@@ -78,7 +90,18 @@ async function* App(this: Context) {
       if (sse.readyState === 0) {
         yield connectingMessage;
       } else if (sse.readyState === 1) {
-        yield <Item lineage={rootLineage} viewState={viewState} />;
+        if (bullets.length > 0) {
+          yield (
+            <ListComponent
+              tree={bullets}
+              treeIndex={0}
+              items={items}
+              viewState={viewState}
+            />
+          );
+        } else {
+          yield <p>Loading data...</p>;
+        }
       } else {
         yield <div>Connection to the server was closed</div>;
       }

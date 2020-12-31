@@ -1,10 +1,32 @@
 import Debug from "debug";
 import express from "express";
 
+import type Item from "../shared/Item";
+import type Bullet from "../shared/Bullet";
+
+import db from "../lib/db";
 import { requireAuthn } from "../lib/middleware";
+
+const dbFetchBullets = db.prepare(
+  "select * from bullets where ownerEmail = ? order by sortOrder asc"
+);
+const dbFetchItems = db.prepare("select * from items where id in (?)");
 
 const appRouter = express.Router();
 appRouter.use(requireAuthn);
+
+function loadInitialStreamData(
+  email: string
+): { items: Item[]; bullets: Bullet[] } {
+  return db.transaction(() => {
+    const bullets: Bullet[] = dbFetchBullets.all(email);
+    const items: Item[] = dbFetchItems.all(
+      Array.from(new Set(bullets.map((bullet) => bullet.itemId)))
+    );
+
+    return { bullets, items };
+  })();
+}
 
 appRouter.get("/event-bus", (req, res) => {
   const debug = Debug("anthologize:app:event-bus");
@@ -21,7 +43,9 @@ appRouter.get("/event-bus", (req, res) => {
     res.write(`event: ${channel}\n`);
     if (id) res.write(`id: ${id}\n`);
     res.write(`data: ${JSON.stringify(data)}\n\n`);
-    debug("packet sent: %s %s %O", channel, id, data);
+    if (channel !== "heartbeat") {
+      debug("packet sent: %s %s %O", channel, id, data);
+    }
   }
 
   res.write("retry: 1000\n\n");
@@ -40,6 +64,9 @@ appRouter.get("/event-bus", (req, res) => {
     clearInterval(interval);
     res.end();
   });
+
+  const initialData = loadInitialStreamData(res.locals.email);
+  sendPacket(initialData, "all-data");
 });
 
 export default appRouter;

@@ -1,9 +1,12 @@
 import { Context, createElement, Fragment } from "@bikeshaving/crank";
 import axios from "axios";
+import Debug from "debug";
 import Joi, { ValidationError } from "joi";
 import page from "page";
 
 import validators from "../../../server/src/lib/validators";
+
+const debug = Debug("anthologize:login");
 
 export default function* Login(this: Context) {
   const values = {
@@ -48,9 +51,12 @@ export default function* Login(this: Context) {
         return void this.refresh();
       }
 
-      await axios.post("/api/auth/login-signup", values);
+      await axios.post("/api/auth/login-signup", values, {
+        withCredentials: true,
+      });
       page("/");
     } catch (ex) {
+      debug("Error logging in: %O", ex);
       error =
         ex.response?.data?.errors ?? ex.response?.data?.error ?? ex.message;
     } finally {

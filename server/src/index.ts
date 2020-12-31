@@ -32,7 +32,8 @@ app.use(
     expires: new Date(new Date().getTime() + 1000 * 86400 * 14),
     sameSite: "strict",
     httpOnly: true,
-    secure: true,
+    // If always set to true, can't sign up in dev
+    secure: process.env.NODE_ENV === "production",
   })
 );
 app.use(bodyParser.json());

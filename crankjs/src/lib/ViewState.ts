@@ -1,120 +1,142 @@
-import Item from "./Item";
-import { last } from "./utils";
+import Debug from "debug";
 
-import type Lineage from "./Lineage";
+import { addToTree, create as createBullet } from "../shared/Bullet";
+import { create as createItem } from "../shared/Item";
+import { between as sortBetween } from "../shared/sortOrder";
 
-import Sorter from "./Sorter";
+import type Bullet from "../shared/Bullet";
+import type Item from "../shared/Item";
+
+const debug = Debug("anthologize:viewstate");
 
 export default class ViewState {
-  #focusedLineage: Lineage | null;
+  #focusedIndex: number | null;
+  #tree: Bullet[];
+  #items: Map<string, Item>;
+  #ownerEmail: string;
 
-  constructor({ lineage }: { lineage: Lineage }) {
-    this.#focusedLineage = lineage;
+  constructor({
+    focusedIndex,
+    tree,
+    items,
+    ownerEmail,
+  }: {
+    focusedIndex?: number;
+    tree: Bullet[];
+    items: Map<string, Item>;
+    ownerEmail: string;
+  }) {
+    this.#focusedIndex = focusedIndex ?? null;
+    this.#tree = tree;
+    this.#items = items;
+    this.#ownerEmail = ownerEmail;
   }
 
-  isInFocus(lineage: Lineage): boolean {
-    return lineage.node === this.#focusedLineage?.node;
+  isInFocus(bullet: Bullet): boolean {
+    return (
+      this.#focusedIndex !== null && bullet === this.#tree[this.#focusedIndex]
+    );
   }
 
-  setFocus(lineage: Lineage): void {
-    this.#focusedLineage = lineage;
-    console.log("Set focus", lineage);
+  setFocus(bullet: Bullet): void {
+    this.#focusedIndex = this.#tree.findIndex((b) => b === bullet);
+    debug("Set focus to %O", bullet);
   }
 
-  removeFocus(lineage: Lineage) {
-    if (this.#focusedLineage !== lineage) return;
-    this.#focusedLineage = null;
+  removeFocus(bullet: Bullet) {
+    if (this.#focusedIndex === null) return;
+    if (this.#tree[this.#focusedIndex] !== bullet) return;
+    this.#focusedIndex = null;
   }
 
-  arrowUp(): Lineage | null {
-    if (!this.#focusedLineage) return null;
-    if (this.#focusedLineage.isRoot) return null;
-
-    let [olderSibling] = this.#focusedLineage.neighbors;
-    if (olderSibling && !olderSibling.hasChildren) {
-      this.#focusedLineage = olderSibling;
-      return null;
-    }
-    if (!olderSibling) {
-      this.#focusedLineage = this.#focusedLineage.parent;
-      return this.#focusedLineage;
-    }
-
-    let relative = olderSibling;
-    while (relative.hasChildren) {
-      relative = last(relative.children);
-    }
-
-    this.setFocus(relative);
-    return relative;
+  arrowUp(): Bullet | null {
+    if (this.#focusedIndex === null) return null;
+    if (this.#focusedIndex === 0) return null;
+    this.setFocus(this.#tree[this.#focusedIndex - 1]);
+    return this.#tree[this.#focusedIndex];
   }
 
-  arrowDown(): Lineage | null {
-    if (!this.#focusedLineage) return null;
-
-    if (this.#focusedLineage.hasChildren) {
-      this.#focusedLineage = this.#focusedLineage.children[0];
-      return null;
-    }
-
-    let relative = this.#focusedLineage;
-    while (true) {
-      if (relative.isRoot) return null;
-      const [, youngerSibling] = relative.neighbors;
-      if (youngerSibling) {
-        this.setFocus(youngerSibling);
-        return youngerSibling;
-      }
-      relative = relative.parent!;
-    }
+  arrowDown(): Bullet | null {
+    if (this.#focusedIndex === null) return null;
+    if (this.#focusedIndex === this.#tree.length - 1) return null;
+    this.setFocus(this.#tree[this.#focusedIndex + 1]);
+    return this.#tree[this.#focusedIndex];
   }
 
   insertAtCurrentPosition(addAsOlder = false): void {
-    if (!this.#focusedLineage) return;
-
-    const node = new Item({ text: "" });
-
-    if (this.#focusedLineage.isRoot || this.#focusedLineage.hasChildren) {
-      console.log("Inserting firstborn");
-      this.setFocus(this.#focusedLineage.prependFirstborn(node));
-    } else if (addAsOlder) {
-      console.log("Inserting older");
-      this.setFocus(this.#focusedLineage.addOlderSibling(node));
-    } else {
-      console.log("Inserting younger");
-      this.setFocus(this.#focusedLineage.addYoungerSibling(node));
-    }
-  }
-
-  indent() {
-    if (!this.#focusedLineage) return;
-    if (this.#focusedLineage.isRoot) return;
-
-    const [olderSibling] = this.#focusedLineage.neighbors;
-    if (!olderSibling) return;
-
-    const sortOrder = new Sorter().placeBetween(
-      last(olderSibling.children)?.edge?.sortOrder ?? null,
-      null
-    );
-    this.setFocus(olderSibling.adopt(this.#focusedLineage, sortOrder));
-  }
-
-  unindent() {
-    if (!this.#focusedLineage) return;
-    if (this.#focusedLineage.isRoot || this.#focusedLineage.parent?.isRoot) {
+    if (this.#focusedIndex === null) {
+      debug("Nothing focused, refusing to insert new item");
       return;
     }
 
-    console.log("Unindenting");
-    const parent = this.#focusedLineage.parent!;
-    const [, before] = parent.neighbors;
+    const self = this.#tree[this.#focusedIndex];
+    const adjacent = this.#tree[this.#focusedIndex + (addAsOlder ? -1 : 1)];
 
-    const sortOrder = new Sorter().placeBetween(
-      parent.edge!.sortOrder,
-      before?.edge?.sortOrder ?? null
-    );
+    if (addAsOlder && self.indent === 0) {
+      throw new Error("Cannot insert prior against the root");
+    }
 
-    this.setFocus(parent.parent!.adopt(this.#focusedLineage, sortOrder));
+    const item = createItem("", this.#ownerEmail);
+    this.#items.set(item.id, item);
+
+    const sortOrder = sortBetween(self.sortOrder, adjacent?.sortOrder ?? null);
+
+    const indent = (() => {
+      if (self.indent === 0) return self.indent + 1;
+      if (addAsOlder) return self.indent;
+      if (adjacent && adjacent.indent > self.indent) {
+        return self.indent + 1;
+      }
+      return self.indent;
+    })();
+    const bullet = createBullet({
+      sortOrder,
+      indent,
+      itemId: item.id,
+      ownerEmail: this.#ownerEmail,
+    });
+    addToTree(this.#tree, [bullet]);
+
+    debug("Created item %O, bullet %O", item, bullet);
+    debug("Tree after insertion: %O", this.#tree);
+
+    this.setFocus(bullet);
+  }
+
+  indent() {
+    if (this.#focusedIndex === null) return;
+    if (
+      !this.#tree[this.#focusedIndex - 1] ||
+      this.#tree[this.#focusedIndex].indent ===
+        this.#tree[this.#focusedIndex].indent - 1
+    ) {
+      return;
+    }
+
+    const oldIndent = this.#tree[this.#focusedIndex].indent;
+    this.#tree[this.#focusedIndex].indent += 1;
+
+    let cursor = this.#focusedIndex + 1;
+    while (this.#tree[cursor].indent > oldIndent) {
+      this.#tree[cursor].indent += 1;
+    }
+  }
+
+  unindent() {
+    if (this.#focusedIndex === null) return;
+    if (
+      !this.#tree[this.#focusedIndex - 1] ||
+      this.#tree[this.#focusedIndex].indent === 1
+    ) {
+      return;
+    }
+
+    const oldIndent = this.#tree[this.#focusedIndex].indent;
+    this.#tree[this.#focusedIndex].indent -= 1;
+
+    let cursor = this.#focusedIndex + 1;
+    while (this.#tree[cursor].indent >= oldIndent) {
+      this.#tree[cursor].indent -= 1;
+    }
   }
 }

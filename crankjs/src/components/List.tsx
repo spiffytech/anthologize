@@ -1,13 +1,30 @@
 import { Context, createElement } from "@bikeshaving/crank";
 
-import type Lineage from "../lib/Lineage";
+import { removeFromTree } from "../shared/Bullet";
+
+import type Item from "../shared/Item";
+import type Bullet from "../shared/Bullet";
+
 import type ViewState from "../lib/ViewState";
 
-export default function ItemComponent(
+export default function ListComponent(
   this: Context,
-  { lineage, viewState }: { lineage: Lineage; viewState: ViewState }
+  {
+    tree,
+    treeIndex,
+    items,
+    viewState,
+  }: {
+    tree: Bullet[];
+    treeIndex: number;
+    items: Map<string, Item>;
+    viewState: ViewState;
+  }
 ) {
-  const isInFocus = viewState.isInFocus(lineage);
+  const self = tree[treeIndex];
+  const selfNode = items.get(self.itemId)!;
+
+  const isInFocus = viewState.isInFocus(self);
 
   // When we unindent we have to refresh the _grandparent_. When dragging and
   // dropping, we have to refresh both ends of the drag-and-drop, _and_ any
@@ -15,9 +32,7 @@ export default function ItemComponent(
   // have to rerender arbitrary places in the tree, so we might as well rerender
   // the whole tree, rather than keep track of exactly what needs rerendering.
   const emitTreeChanged = () => {
-    this.dispatchEvent(
-      new CustomEvent("tree-changed", { bubbles: true, detail: { lineage } })
-    );
+    this.dispatchEvent(new CustomEvent("tree-changed", { bubbles: true }));
   };
 
   let inputEl: HTMLTextAreaElement | null = null;
@@ -37,9 +52,12 @@ export default function ItemComponent(
       event.preventDefault();
       viewState.insertAtCurrentPosition(
         // TODO: Do I actually want to copy this from Workflowy?
-        !lineage.isRoot &&
+        /*
+        treeIndex !== 0 &&
           inputEl?.selectionEnd === 0 &&
-          lineage.node.text.length > 0
+          selfNode.body.length > 0
+          */
+        false
       );
     } else if (
       event.ctrlKey &&
@@ -47,31 +65,40 @@ export default function ItemComponent(
       (event.key === "Backspace" || event.key === "Delete")
     ) {
       viewState.arrowUp();
-      lineage.kill();
+      removeFromTree(tree, self, items);
     } else {
       console.log(event.key);
     }
     emitTreeChanged();
   }
 
+  const childrenToRender = [];
+  let cursor = treeIndex + 1;
+  while (tree[cursor] && tree[cursor].indent > self.indent) {
+    if (tree[cursor].indent === self.indent + 1) {
+      childrenToRender.push(cursor);
+    }
+    cursor += 1;
+  }
+
   const renderedText = (
     <output
-      for={`item-input-${lineage.node.id}`}
+      for={`item-input-${self.bulletKey}`}
       class="bg-gray-200 w-64 h-16 block"
       onclick={() => {
-        viewState.setFocus(lineage);
+        viewState.setFocus(self);
         emitTreeChanged();
       }}
       role="textbox"
       ariaReadonly="false"
     >
-      {lineage.node.text || "Empty node"}
+      {selfNode.body || "Empty node"}
     </output>
   );
 
   const input = (
     <textarea
-      id={`item-input-${lineage.node.id}`}
+      id={`item-input-${self.bulletKey}`}
       class={`${
         isInFocus ? "static" : "-top-full absolute"
       } focus:bg-red-200 w-64 h-16 block border`}
@@ -82,50 +109,46 @@ export default function ItemComponent(
           if (isInFocus) el.focus();
         });
       }}
-      value={lineage.node.text}
+      value={selfNode.body}
       oninput={(e: any) => {
-        lineage.node.text = e.target.value;
+        selfNode.body = e.target.value;
         this.refresh();
       }}
       placeholder="Empty item..."
       onkeydown={onKeyDown}
-      /*
       onfocus={() => {
-        viewState.setFocus(lineage);
+        if (viewState.isInFocus(self)) return;
+        viewState.setFocus(self);
         emitTreeChanged();
       }}
-      */
       onblur={() => {
-        viewState.removeFocus(lineage);
+        viewState.removeFocus(self);
         emitTreeChanged();
       }}
     />
   );
 
-  const children = !lineage.hasChildren
-    ? null
-    : lineage.children.map((child) => (
-        <li crank-key={child.node.id}>
-          <ItemComponent lineage={child} viewState={viewState} />
-        </li>
-      ));
-
   return (
     <ul class="ml-8">
-      <li crank-key={lineage.node.id}>
+      <li crank-key={self.bulletKey}>
         <article>
-          <p>
-            {lineage.pathFromRoot.map((ancestor) => `${ancestor.from.id} -> `)}
-            <span class="font-bold">
-              {lineage.node.id} {isInFocus ? `($)` : null}
-            </span>{" "}
-          </p>
-          <p>#{lineage.edge?.sortOrder}</p>
+          <p>#{self.sortOrder}</p>
           {input}
           {isInFocus ? null : renderedText}
         </article>
       </li>
-      {children}
+      {childrenToRender.length > 0 ? (
+        <ul class="ml-8">
+          {childrenToRender.map((childIndex) => (
+            <ListComponent
+              tree={tree}
+              treeIndex={childIndex}
+              items={items}
+              viewState={viewState}
+            />
+          ))}
+        </ul>
+      ) : null}
     </ul>
   );
 }
