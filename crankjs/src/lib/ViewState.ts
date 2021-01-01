@@ -108,7 +108,7 @@ export default class ViewState {
     if (
       !this.#tree[this.#focusedIndex - 1] ||
       this.#tree[this.#focusedIndex].indent ===
-        this.#tree[this.#focusedIndex].indent - 1
+        this.#tree[this.#focusedIndex - 1].indent + 1
     ) {
       return;
     }
