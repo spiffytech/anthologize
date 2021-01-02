@@ -3,6 +3,7 @@ import { renderer } from "@bikeshaving/crank/dom";
 import Debug from "debug";
 import page from "page";
 
+import ActionManager from "./lib/ActionManager";
 import ViewState from "./lib/ViewState";
 
 import type Item from "./shared/Item";
@@ -13,17 +14,6 @@ import Login from "./components/Login";
 
 const debug = Debug("anthologize:index");
 
-async function* initSse(refresh: () => void) {
-  while (true) {
-    yield null;
-    await new Promise((resolve) => {
-      const sse = new EventSource("/api/app/event-bus", {
-        withCredentials: true,
-      });
-    });
-  }
-}
-
 async function* App(this: Context) {
   const debugSse = Debug("anthologize:app:sse");
 
@@ -33,6 +23,8 @@ async function* App(this: Context) {
 
   const items: Map<string, Item> = new Map();
   const bullets: Bullet[] = [];
+
+  const actionManager = new ActionManager();
 
   const viewState = new ViewState({ tree: bullets, items, ownerEmail: "" });
 
@@ -97,6 +89,7 @@ async function* App(this: Context) {
               treeIndex={0}
               items={items}
               viewState={viewState}
+              actionManager={actionManager}
             />
           );
         } else {

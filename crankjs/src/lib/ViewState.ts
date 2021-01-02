@@ -63,10 +63,12 @@ export default class ViewState {
     return this.#tree[this.#focusedIndex];
   }
 
-  insertAtCurrentPosition(addAsOlder = false): void {
+  insertAtCurrentPosition(
+    addAsOlder = false
+  ): { after: Bullet; indent: number } | null {
     if (this.#focusedIndex === null) {
       debug("Nothing focused, refusing to insert new item");
-      return;
+      return null;
     }
 
     const self = this.#tree[this.#focusedIndex];
@@ -76,11 +78,6 @@ export default class ViewState {
       throw new Error("Cannot insert prior against the root");
     }
 
-    const item = createItem("", this.#ownerEmail);
-    this.#items.set(item.id, item);
-
-    const sortOrder = sortBetween(self.sortOrder, adjacent?.sortOrder ?? null);
-
     const indent = (() => {
       if (self.indent === 0) return self.indent + 1;
       if (addAsOlder) return self.indent;
@@ -89,18 +86,8 @@ export default class ViewState {
       }
       return self.indent;
     })();
-    const bullet = createBullet({
-      sortOrder,
-      indent,
-      itemId: item.id,
-      ownerEmail: this.#ownerEmail,
-    });
-    addToTree(this.#tree, [bullet]);
 
-    debug("Created item %O, bullet %O", item, bullet);
-    debug("Tree after insertion: %O", this.#tree);
-
-    this.setFocus(bullet);
+    return { after: self, indent };
   }
 
   indent() {

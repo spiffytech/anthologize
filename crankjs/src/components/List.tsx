@@ -2,6 +2,10 @@ import { Context, createElement } from "@bikeshaving/crank";
 
 import { removeFromTree } from "../shared/Bullet";
 
+import ItemAdder from "../lib/actions/ItemAdder";
+
+import type ActionManager from "../lib/ActionManager";
+
 import type Item from "../shared/Item";
 import type Bullet from "../shared/Bullet";
 
@@ -14,11 +18,13 @@ export default function ListComponent(
     treeIndex,
     items,
     viewState,
+    actionManager,
   }: {
     tree: Bullet[];
     treeIndex: number;
     items: Map<string, Item>;
     viewState: ViewState;
+    actionManager: ActionManager;
   }
 ) {
   const self = tree[treeIndex];
@@ -50,7 +56,7 @@ export default function ListComponent(
       viewState.arrowDown();
     } else if (event.key === "Enter") {
       event.preventDefault();
-      viewState.insertAtCurrentPosition(
+      const insertionParams = viewState.insertAtCurrentPosition(
         // TODO: Do I actually want to copy this from Workflowy?
         /*
         treeIndex !== 0 &&
@@ -59,6 +65,16 @@ export default function ListComponent(
           */
         false
       );
+      if (insertionParams === null) return;
+
+      const action = new ItemAdder(
+        "",
+        tree,
+        items,
+        insertionParams.after,
+        insertionParams.indent
+      );
+      actionManager.perform(action, (bullet) => viewState.setFocus(bullet));
     } else if (
       event.ctrlKey &&
       event.shiftKey &&
@@ -145,6 +161,7 @@ export default function ListComponent(
               treeIndex={childIndex}
               items={items}
               viewState={viewState}
+              actionManager={actionManager}
             />
           ))}
         </ul>
