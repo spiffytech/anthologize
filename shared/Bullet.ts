@@ -3,16 +3,18 @@ import ids from "./ids";
 import type Item from "./Item";
 
 export default interface Bullet {
-  bulletKey: string;
+  id: string;
   ownerEmail: string | null;
+  bulletKey: string;
   itemId: string;
-  indent: number;
+  parent: string | null;
   sortOrder: string;
 }
 
-export function create(userNode: Omit<Bullet, "bulletKey">): Bullet {
+export function create(userNode: Omit<Bullet, "id" | "bulletKey">): Bullet {
   return {
     ...userNode,
+    id: ids(),
     bulletKey: ids(),
   };
 }
@@ -27,7 +29,7 @@ export function removeFromTree(
   bullet: Bullet,
   items: Map<string, Item>
 ) {
-  if (bullet.indent === 0) return;
+  if (bullet.parent === null) return;
 
   const index = tree.findIndex((b) => b === bullet);
   tree.splice(index, 1);

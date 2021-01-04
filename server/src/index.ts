@@ -45,7 +45,7 @@ app.use("/api/app", appRouter);
 if (process.env.NODE_ENV !== "production") {
   app.use(
     new Parcel(
-      path.join(appRoot, "..", "crankjs", "public", "index.html")
+      path.join(appRoot, "..", "mithril", "public", "index.html")
     ).middleware()
   );
 }

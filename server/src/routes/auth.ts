@@ -28,32 +28,33 @@ function seedNewUserData(email: string) {
   const debug = Debug(`${debugBaseKey}:signup:seed-data`);
   debug("Seeding new user data for %s", email);
 
-  const rootNode = Item.create("", email);
+  const rootItem = Item.create("", email);
   db.prepare(
     "insert into items (id, ownerEmail, body, bodyType) values (?, ?, ?, 'line')"
-  ).run(rootNode.id, email, rootNode.body);
+  ).run(rootItem.id, email, rootItem.body);
 
-  const userNode = Bullet.create({
-    itemId: rootNode.id,
-    indent: 0,
+  const bullet = Bullet.create({
+    itemId: rootItem.id,
+    parent: null,
     sortOrder: sortOrder.between(null, null),
     ownerEmail: email,
   });
   db.prepare(
-    "insert into bullets (bulletKey, ownerEmail, itemId, indent, sortOrder) values (?, ?, ?, ?, ?)"
+    "insert into bullets (id, ownerEmail, bulletKey, itemId, parent, sortOrder) values (?, ?, ?, ?, ?, ?)"
   ).run(
-    userNode.bulletKey,
+    bullet.id,
     email,
-    userNode.itemId,
-    userNode.indent,
-    userNode.sortOrder
+    bullet.bulletKey,
+    bullet.itemId,
+    bullet.parent,
+    bullet.sortOrder
   );
 
   debug(
     "Seeding complete for %s: root node bulletKey: %s / item ID: %s",
     email,
-    userNode.bulletKey,
-    rootNode.id
+    bullet.bulletKey,
+    rootItem.id
   );
 }
 

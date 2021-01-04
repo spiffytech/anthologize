@@ -40,15 +40,17 @@ if (cluster.isMaster) {
       check (bodyType in ('line', 'longform'))
     );
     create table bullets (
-      bulletKey text not NULL,
+      id text not NULL,
       ownerEmail text,
+      bulletKey text not NULL,
       itemId text not NULL,
-      indent number not NULL,
+      parent text,
       sortOrder text not NULL,
-      primary key (bulletKey, ownerEmail),
+      primary key (id),
+      unique (ownerEmail, bulletKey, sortOrder),
       foreign key (itemId) references items(id) on delete cascade,
       foreign key (ownerEmail) references users(email) on delete cascade,
-      check (indent >= 0),
+      foreign key (parent) references bullets (id)
       check (sortOrder not in ('a', 'z'))
     );`,
   ];
