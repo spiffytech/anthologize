@@ -3,13 +3,13 @@ import ids from "./ids";
 export default interface Item {
   id: string;
   body: string;
-  ownerEmail: string;
+  owner: string;
 }
 
-export function create(ownerEmail: string, body?: string): Item {
+export function create(owner: string, body?: string): Item {
   return {
     id: ids(),
-    ownerEmail,
+    owner,
     body: body ?? "",
   };
 }

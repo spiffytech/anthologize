@@ -37,7 +37,7 @@ async function initSse(
       });
       // Firefox doesn't automatically reconnect if the server closes the connection
       if (sse.readyState === 2) {
-        initSse(onConnecting, onCreate);
+        setTimeout(() => initSse(onConnecting, onCreate), 5000);
       }
     };
   }

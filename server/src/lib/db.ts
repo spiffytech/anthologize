@@ -21,35 +21,37 @@ if (cluster.isMaster) {
 
   const migrations: string[] = [
     `create table users (
-        email text PRIMARY KEY not NULL,
+        id text PRIMARY KEY not NULL,
+        email text not NULL,
         scrypt text not NULL,
         salt text not NULL,
-        lastSeen text not NULL
+        lastSeen text not NULL,
+        unique (email)
       );
       create table sessions (
         id integer primary key not NULL,
-        email text not NULL,
+        user text not NULL,
         lastSeen text not NULL
       )`,
     `create table items (
       id text primary key not NULL,
-      ownerEmail text not null,
+      owner text not null,
       body text not null,
       bodyType text not null,
-      foreign key (ownerEmail) references users(email) on delete cascade,
+      foreign key (owner) references users(id) on delete cascade,
       check (bodyType in ('line', 'longform'))
     );
     create table bullets (
       id text not NULL,
-      ownerEmail text,
+      owner text,
       bulletKey text not NULL,
       itemId text not NULL,
       parent text,
       sortOrder text not NULL,
       primary key (id),
-      unique (ownerEmail, bulletKey, sortOrder),
+      unique (owner, bulletKey, sortOrder),
       foreign key (itemId) references items(id) on delete cascade,
-      foreign key (ownerEmail) references users(email) on delete cascade,
+      foreign key (owner) references users(id) on delete cascade,
       foreign key (parent) references bullets (id)
       check (sortOrder not in ('a', 'z'))
     );`,

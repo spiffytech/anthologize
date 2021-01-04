@@ -8,7 +8,7 @@ import db from "../lib/db";
 import { requireAuthn } from "../lib/middleware";
 
 const dbFetchBullets = db.prepare(
-  "select * from bullets where ownerEmail = ? order by sortOrder asc"
+  "select * from bullets where owner = ? order by sortOrder asc"
 );
 const dbFetchItems = db.prepare("select * from items where id in (?)");
 
@@ -16,10 +16,10 @@ const appRouter = express.Router();
 appRouter.use(requireAuthn);
 
 function loadInitialStreamData(
-  email: string
+  owner: string
 ): { items: Item[]; bullets: Bullet[] } {
   return db.transaction(() => {
-    const bullets: Bullet[] = dbFetchBullets.all(email);
+    const bullets: Bullet[] = dbFetchBullets.all(owner);
     const items: Item[] = dbFetchItems.all(
       Array.from(new Set(bullets.map((bullet) => bullet.itemId)))
     );
@@ -65,7 +65,8 @@ appRouter.get("/event-bus", (req, res) => {
     res.end();
   });
 
-  const initialData = loadInitialStreamData(res.locals.email);
+  console.log("Loading data for user %s", res.locals.user);
+  const initialData = loadInitialStreamData(res.locals.user);
   sendPacket(initialData, "all-data");
 });
 

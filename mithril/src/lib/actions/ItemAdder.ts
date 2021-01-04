@@ -41,7 +41,7 @@ export default class ItemAdder extends Action<Bullet> {
       sortOrder,
       parent: this.#parent,
       itemId: item.id,
-      ownerEmail: this.#owner,
+      owner: this.#owner,
     });
 
     this.bullets.splice(0, 0, bullet);

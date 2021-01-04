@@ -1,4 +1,5 @@
 export interface User {
+  id: string;
   email: string;
   scrypt: string;
   salt: string;
@@ -7,7 +8,7 @@ export interface User {
 
 export interface Session {
   id: number;
-  email: string;
+  user: string;
   lastSeen: string;
 }
 export type NewSession = Omit<Session, "id">;

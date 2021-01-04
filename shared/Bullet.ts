@@ -4,7 +4,7 @@ import type Item from "./Item";
 
 export default interface Bullet {
   id: string;
-  ownerEmail: string | null;
+  owner: string | null;
   bulletKey: string;
   itemId: string;
   parent: string | null;

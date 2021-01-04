@@ -6,6 +6,7 @@ import express from "express";
 import Joi, { ValidationError } from "joi";
 
 import db from "../lib/db";
+import ids from "../shared/ids";
 import { User } from "../lib/types";
 import validators from "../lib/validators";
 
@@ -24,26 +25,26 @@ async function scrypt(passwd: string, salt: string): Promise<Buffer> {
 
 const debugBaseKey = "anthologize:routers:auth";
 
-function seedNewUserData(email: string) {
+function seedNewUserData(owner: string) {
   const debug = Debug(`${debugBaseKey}:signup:seed-data`);
-  debug("Seeding new user data for %s", email);
+  debug("Seeding new user data for %s", owner);
 
-  const rootItem = Item.create("", email);
+  const rootItem = Item.create(owner, "");
   db.prepare(
-    "insert into items (id, ownerEmail, body, bodyType) values (?, ?, ?, 'line')"
-  ).run(rootItem.id, email, rootItem.body);
+    "insert into items (id, owner, body, bodyType) values (?, ?, ?, 'line')"
+  ).run(rootItem.id, owner, rootItem.body);
 
   const bullet = Bullet.create({
     itemId: rootItem.id,
     parent: null,
     sortOrder: sortOrder.between(null, null),
-    ownerEmail: email,
+    owner,
   });
   db.prepare(
-    "insert into bullets (id, ownerEmail, bulletKey, itemId, parent, sortOrder) values (?, ?, ?, ?, ?, ?)"
+    "insert into bullets (id, owner, bulletKey, itemId, parent, sortOrder) values (?, ?, ?, ?, ?, ?)"
   ).run(
     bullet.id,
-    email,
+    owner,
     bullet.bulletKey,
     bullet.itemId,
     bullet.parent,
@@ -52,18 +53,18 @@ function seedNewUserData(email: string) {
 
   debug(
     "Seeding complete for %s: root node bulletKey: %s / item ID: %s",
-    email,
+    owner,
     bullet.bulletKey,
     rootItem.id
   );
 }
 
-function createSession(email: string): number {
+function createSession(user: string): number {
   return db
     .prepare(
-      "insert into sessions (email, lastSeen) values (?, datetime('now', 'localtime'))"
+      "insert into sessions (user, lastSeen) values (?, datetime('now', 'localtime'))"
     )
-    .run(email)["lastInsertRowid"] as number;
+    .run(user)["lastInsertRowid"] as number;
 }
 
 const authRouter = express.Router();
@@ -117,22 +118,23 @@ authRouter.post("/login-signup", async (req, res) => {
 
     const salt = crypto.randomBytes(256 / 8).toString("hex");
     const hash = await scrypt(password, salt);
+    const userId = ids();
     db.prepare(
-      "insert into users (email, scrypt, salt, lastSeen) values (?, ?, ?, datetime('now', 'localtime'))"
-    ).run(email, hash.toString("hex"), salt);
+      "insert into users (id, email, scrypt, salt, lastSeen) values (?, ?, ?, ?, datetime('now', 'localtime'))"
+    ).run(userId, email, hash.toString("hex"), salt);
 
     req.session!.id = db
       .prepare(
-        "insert into sessions (email, lastSeen) values (?, datetime('now', 'localtime'))"
+        "insert into sessions (user, lastSeen) values (?, datetime('now', 'localtime'))"
       )
-      .run(email)["lastInsertRowid"] as number;
+      .run(userId)["lastInsertRowid"] as number;
 
-    req.session!.email = email;
+    req.session!.user = userId;
     req.session!.lastSessionLookup = new Date().toISOString();
 
-    seedNewUserData(email);
+    seedNewUserData(userId);
 
-    debug("New user creation finished: %s", email);
+    debug("New user creation finished: %s", userId);
     return void res.send("success");
   }
 
@@ -156,8 +158,8 @@ authRouter.post("/login-signup", async (req, res) => {
     "update users set lastSeen=datetime('now', 'localtime') where email=?"
   ).run(existingUser.email);
 
-  req.session!.id = createSession(existingUser.email);
-  req.session!.email = existingUser.email;
+  req.session!.id = createSession(existingUser.id);
+  req.session!.user = existingUser.id;
   req.session!.lastSessionLookup = new Date().toISOString();
 
   res.send();

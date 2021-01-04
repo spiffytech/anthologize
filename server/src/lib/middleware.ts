@@ -37,7 +37,7 @@ export function refreshSession(
   }
 
   if (req.session.id) {
-    res.locals.email = req.session.email;
+    res.locals.user = req.session.user;
   }
 
   req.session.lastSeen = new Date().toISOString();
